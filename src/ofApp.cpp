@@ -30,101 +30,22 @@ void ofApp::setup(){
 void ofApp::update(){
     fingersFound.clear();
     
-    //here is a simple example of getting the hands and drawing each finger and joint
-    //the leap data is delivered in a threaded callback - so it can be easier to work with this copied hand data
-    
-    //if instead you want to get the data as it comes in then you can inherit ofxLeapMotion and implement the onFrame method.
-    //there you can work with the frame data directly.
-    
-    
-    
-    //Option 1: Use the simple ofxLeapMotionSimpleHand - this gives you quick access to fingers and palms.
-    
-    
     simpleHands = leap.getSimpleHands();
-//
-//    if( leap.isFrameNew() && simpleHands.size() ){
-//        
-//        leap.setMappingX(-230, 230, -ofGetWidth()/2, ofGetWidth()/2);
-//        leap.setMappingY(90, 490, -ofGetHeight()/2, ofGetHeight()/2);
-//        leap.setMappingZ(-150, 150, -200, 200);
-//        
-//        fingerType fingerTypes[] = {THUMB, INDEX, MIDDLE, RING, PINKY};
-//        
-//        for(int i = 0; i < simpleHands.size(); i++){
-//            for (int f=0; f<5; f++) {
-//                int id = simpleHands[i].fingers[ fingerTypes[f] ].id;
-//                ofPoint mcp = simpleHands[i].fingers[ fingerTypes[f] ].mcp; // metacarpal
-//                ofPoint pip = simpleHands[i].fingers[ fingerTypes[f] ].pip; // proximal
-//                ofPoint dip = simpleHands[i].fingers[ fingerTypes[f] ].dip; // distal
-//                ofPoint tip = simpleHands[i].fingers[ fingerTypes[f] ].tip; // fingertip
-//                fingersFound.push_back(id);
-//            }
-//        }
-//    }
-    
-    
-    
-    //Option 2: Work with the leap data / sdk directly - gives you access to more properties than the simple approach
-    //uncomment code below and comment the code above to use this approach. You can also inhereit ofxLeapMotion and get the data directly via the onFrame callback.
-    
-    //     vector <Hand> hands = leap.getLeapHands();
-    //     if( leap.isFrameNew() && hands.size() ){
-    //
-    //         //leap returns data in mm - lets set a mapping to our world space.
-    //         //you can get back a mapped point by using ofxLeapMotion::getMappedofPoint with the Leap::Vector that tipPosition returns
-    //         leap.setMappingX(-230, 230, -ofGetWidth()/2, ofGetWidth()/2);
-    //         leap.setMappingY(90, 490, -ofGetHeight()/2, ofGetHeight()/2);
-    //         leap.setMappingZ(-150, 150, -200, 200);
-    //
-    //         fingerType fingerTypes[] = {THUMB, INDEX, MIDDLE, RING, PINKY};
-    //
-    //         for(int i = 0; i < hands.size(); i++){
-    //             for(int j = 0; j < 5; j++){
-    //                 ofPoint pt;
-    //
-    //                 const Finger & finger = hands[i].fingers()[ fingerTypes[j] ];
-    //
-    //                 //here we convert the Leap point to an ofPoint - with mapping of coordinates
-    //                 //if you just want the raw point - use ofxLeapMotion::getofPoint
-    //                 pt = leap.getMappedofPoint( finger.tipPosition() );
-    ////                 pt = leap.getMappedofPoint( finger.jointPosition(finger.JOINT_DIP) );
-    //
-    //                 fingersFound.push_back(finger.id());
-    //             }
-    //         }
-    //     }
-    
+
+    // if sender switch is set to 1, send all this leap data over OSC
     if(senderSwitch){
-        //send all leap data over OSC
+
         hands = leap.getLeapHands();
         
         if (hands.size() > 0) {
             for (int h = 0; h < hands.size(); h++){
                 
                 ofxOscMessage m;
-    //              //test message
-    //            m.setAddress( "/test" );
-    //            m.addIntArg( h );
-    //             m.addFloatArg( 3.5f );
-    //            m.addStringArg( "hands found" );
-    //             m.addFloatArg( ofGetElapsedTimef() );
-    //            oscSender.sendMessage( m );
-    //            m.clear();
                 
                 // Get the current hand
                 Hand & hand = hands[h];
                 
                 string handType = hand.isLeft() ? "Left" : "Right";     //pretty sweet way of knowing which hand
-                
-                ////send handType over OSC
-                // m.setAddress("/handType");
-                // m.addStringArg(handType);
-                // oscSender.sendMessage(m);
-                // m.clear();
-                
-                //get palm position
-                //cout << ", palm" << hand.palmPosition() << endl;
                 
                 m.setAddress("/" + handType);
                 m.addStringArg("/palm");
@@ -142,14 +63,9 @@ void ofApp::update(){
                 oscSender.sendMessage(m);
                 m.clear();
                 
-                
                 // Calculate the hand's pitch, roll, and yaw angles
                 const Vector normal = hand.palmNormal();
                 const Vector direction = hand.direction();
-                
-                // cout << string(2, ' ') <<  "pitch: " << direction.pitch() * RAD_TO_DEG << " degrees, "
-                //             << "roll: " << normal.roll() * RAD_TO_DEG << " degrees, "
-                //             << "yaw: " << direction.yaw() * RAD_TO_DEG << " degrees" << endl;
                 
                 m.setAddress("/" + handType);
                 m.addStringArg("/pitch");
@@ -172,10 +88,6 @@ void ofApp::update(){
                 
                 // Get the Arm bone
                 Arm arm = hand.arm();
-                
-                // cout << string(2, ' ') <<  "Arm direction: " << arm.direction()
-                //   << " wrist position: " << arm.wristPosition()
-                //   << " elbow position: " << arm.elbowPosition() << endl;
                 
                 m.setAddress("/" + handType);
                 m.addStringArg("/armDirection");
@@ -207,11 +119,6 @@ void ofApp::update(){
                 for (FingerList::const_iterator fl = fingers.begin(); fl != fingers.end(); ++fl) {
                     const Finger finger = *fl;
                     
-                    // cout << string(4, ' ') <<  fingerNames[finger.type()]
-                    //         << " finger, id: " << finger.id()
-                    //         << ", length: " << finger.length()
-                    //         << "mm, width: " << finger.width() << endl;
-                    
                     m.setAddress("/" + handType);
                     m.addStringArg("/fingers");
                     m.addStringArg("/" + fingerNames[finger.type()]);
@@ -226,12 +133,6 @@ void ofApp::update(){
                     for (int b = 0; b < 4; ++b) {
                         Bone::Type boneType = static_cast<Bone::Type>(b);
                         Bone bone = finger.bone(boneType);
-                        
-                        // cout << string(6, ' ') <<  boneNames[boneType]
-                        //           << " bone, start: " << bone.prevJoint()
-                        //           << ", end: " << bone.nextJoint()
-                        //           << ", direction: " << bone.direction() << endl;
-                        
                         
                         //sending current bones' previous joint
                         m.setAddress("/" + handType);
@@ -257,17 +158,6 @@ void ofApp::update(){
                         oscSender.sendMessage(m);
                         m.clear();
                         
-    //                    //sending current bones' next joint
-    //                    m.setAddress("/" + handType);
-    //                    m.addStringArg("/fingers");
-    //                    m.addStringArg("/" + fingerNames[finger.type()]);
-    ////                    m.addStringArg("/" + boneNames[boneType]);
-    ////                    m.addStringArg("/nextJoint");
-    //                    m.addFloatArg(finger.tipPosition()[1]) ;       // x
-    //                    m.addFloatArg(bone.nextJoint()[1]);       // y
-    //                    m.addFloatArg(bone.nextJoint()[2]);       // z
-    //                    oscSender.sendMessage(m);
-    //                    m.clear();
                     }
                     
                 }
@@ -279,8 +169,6 @@ void ofApp::update(){
         //if we're not sending out all leap data,
         //just use the triangle (left hand) + centroid
         //and selection (right hand)
-        
-//        simpleHands = leap.getSimpleHands();
         
         if( leap.isFrameNew() && simpleHands.size() ){
             
@@ -301,10 +189,9 @@ void ofApp::update(){
                 
                 for (int f=0; f<5; f++) {
                     int id = simpleHands[i].fingers[ fingerTypes[f] ].id;
-//                    ofPoint mcp = simpleHands[i].fingers[ fingerTypes[f] ].mcp; // metacarpal
-//                    ofPoint pip = simpleHands[i].fingers[ fingerTypes[f] ].pip; // proximal
-//                    ofPoint dip = simpleHands[i].fingers[ fingerTypes[f] ].dip; // distal
+                    
                     ofPoint tip = simpleHands[i].fingers[ fingerTypes[f] ].tip; // fingertip
+                    
                     fingersFound.push_back(id);
                     
                     if (isLeft) {
@@ -340,16 +227,6 @@ void ofApp::update(){
                             oscSender.sendMessage( m );
                             m.clear();
                         }
-                        
-//                        simpleHands[i].armPos;
-//                        
-//                        m.setAddress("/" + handType);
-//                        m.addStringArg("/wristPosition");
-//                        m.addFloatArg(arm.wristPosition()[0]);       // x
-//                        m.addFloatArg(arm.wristPosition()[1]);       // y
-//                        m.addFloatArg(arm.wristPosition()[2]);       // z
-//                        oscSender.sendMessage(m);
-//                        m.clear();
                     }
                 }
                 //divide centroid accumulators by 3 to get centroid's 3d coordinates
@@ -358,7 +235,6 @@ void ofApp::update(){
                 centroidZ = centroidZ/3;
                 
                 //now send the centroid's coordinates over osc
-//                ofxOscMessage m;
                 m.setAddress( "/centroid" );
                 m.addFloatArg(centroidX);
                 m.addFloatArg(centroidY);
@@ -386,23 +262,13 @@ void ofApp::update(){
 //---------------------------------------------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------------------------------------------
 void ofApp::draw(){
-//    ofBackgroundGradient(ofColor(169,221,214), ofColor(173,198,152), OF_GRADIENT_BAR);
-//    ofBackground(15,29,45);   //azul processing
     ofBackground(66,70,76);
     ofSetColor(50);
     ofDrawBitmapString("Leap Connected?: " + ofToString(leap.isConnected()), 20, 20);
     ofDrawBitmapString("hands found: " + ofToString(simpleHands.size()), 20, 40);
     ofDrawBitmapString("send all data?: " + ofToString(senderSwitch), 20, 60);
 
-
     cam.begin();
-    
-//    //draw leap grid
-//    ofPushMatrix();
-//    ofRotate(90, 0, 0, 1);
-//    ofSetColor(237,227,238);
-//    ofDrawGridPlane(800, 20, false);
-//    ofPopMatrix();
     
     //draw audio waveform
     ofPushMatrix();
@@ -410,13 +276,9 @@ void ofApp::draw(){
     //ofEnableBlendMode(OF_BLENDMODE_ADD);
     ofScale((float) ofGetWidth() / audio.getNumFrames(), ofGetHeight() / 2);
     ofTranslate(-(audio.getNumFrames()/2), -0.13);
-//    ofSetColor(192,87,70);
     ofSetColor(222, 222, 222);
     left.drawFaces();
     ofPopMatrix();
-    
-
-    
     
     fingerType fingerTypes[] = {THUMB, INDEX, MIDDLE, RING, PINKY};
     
@@ -431,33 +293,11 @@ void ofApp::draw(){
         ofPoint handPos    = simpleHands[i].handPos;
         ofPoint handNormal = simpleHands[i].handNormal;
         
-        //draw sphere in center of palm and line for palm direction
-//        ofSetColor(0,0,230);
-//        ofDrawSphere(handPos.x, handPos.y, handPos.z, 10);
-//        ofSetColor(180,236,40);
-//        ofDrawArrow(handPos, handPos + 50*handNormal);
-        
         for (int f=0; f < 5; f++) {
             ofPoint mcp = simpleHands[i].fingers[ fingerTypes[f] ].mcp;  // metacarpal
             ofPoint pip = simpleHands[i].fingers[ fingerTypes[f] ].pip;  // proximal
             ofPoint dip = simpleHands[i].fingers[ fingerTypes[f] ].dip;  // distal
             ofPoint tip = simpleHands[i].fingers[ fingerTypes[f] ].tip;  // fingertip
-
-//            //draw joints
-//            ofSetColor(0);
-//            ofDrawSphere(mcp.x, mcp.y, mcp.z, 7);
-//            ofDrawSphere(pip.x, pip.y, pip.z, 7);
-//            ofDrawSphere(dip.x, dip.y, dip.z, 7);
-//            ofDrawSphere(tip.x, tip.y, tip.z, 7);
-//
-//            //drawbones
-//            ofSetColor(0);
-//            ofSetLineWidth(3);
-//            ofLine(mcp.x, mcp.y, mcp.z, pip.x, pip.y, pip.z);
-//            ofLine(pip.x, pip.y, pip.z, dip.x, dip.y, dip.z);
-//            ofLine(dip.x, dip.y, dip.z, tip.x, tip.y, tip.z);
-            
-            
             
             //draw triangle
             ofPushMatrix();
@@ -506,9 +346,7 @@ void ofApp::draw(){
             ofScale((float) ofGetWidth() / audio.getNumFrames(), ofGetHeight() / 2);
             ofTranslate(exis,-1);
             ofEnableAlphaBlending();
-//            ofSetColor(89,127,66,100);
             ofSetColor(227, 60, 54,185); // bien rojo
-//            ofSetColor(241, 101, 55);
             ofRect(leftSelection, 0, rightSelection - leftSelection, ofGetHeight());
             ofDisableAlphaBlending();
             ofPopMatrix();
@@ -530,15 +368,6 @@ void ofApp::draw(){
         ofDrawSphere(centroidX, centroidY, centroidZ, 6);
         ofDisableAlphaBlending();
         ofPopMatrix();
-        
-//        //now send the centroid's coordinates over osc
-//        ofxOscMessage m;
-//        m.setAddress( "/centroid" );
-//        m.addFloatArg(centroidX);
-//        m.addFloatArg(centroidY);
-//        m.addFloatArg(centroidZ);
-//        oscSender.sendMessage( m );
-//        m.clear();
         
     }
     
