@@ -1,0 +1,3 @@
+ofxOsc
+ofxAudioDecoder
+ofxLeapMotion2
